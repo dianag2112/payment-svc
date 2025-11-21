@@ -9,6 +9,8 @@ import bg.softuni.paymentsvc.payments.model.PaymentStatus;
 import bg.softuni.paymentsvc.payments.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
 
     @Transactional
+    @CacheEvict(value = "payments", allEntries = true)
     public PaymentResponse createPayment(PaymentRequest request) {
         LocalDateTime now = LocalDateTime.now();
 
@@ -65,6 +68,7 @@ public class PaymentService {
         }
     }
 
+    @Cacheable(value = "payments", key = "#id")
     public PaymentResponse getPayment(UUID id) {
         log.info("Fetching payment {}", id);
 
@@ -74,26 +78,28 @@ public class PaymentService {
         return toResponse(payment);
     }
 
+    @Cacheable(value = "payments", key = "'order-' + #orderId")
     public PaymentResponse getPaymentByOrderId(UUID orderId) {
         log.info("Fetching payment for order {}", orderId);
 
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> {
                     log.warn("Payment for order {} not found", orderId);
-                   return new IllegalArgumentException("Payment for this order not found");
+                    return new IllegalArgumentException("Payment for this order not found");
                 });
 
         return toResponse(payment);
     }
 
     @Transactional
+    @CacheEvict(value = "payments", allEntries = true)
     public PaymentResponse updateStatus(UUID paymentId, PaymentStatusUpdateRequest request) {
         log.info("Updating payment {} status to {}", paymentId, request.getStatus());
 
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> {
                     log.warn("Payment {} not found for status update", paymentId);
-                   return new IllegalArgumentException("Payment not found");
+                    return new IllegalArgumentException("Payment not found");
                 });
 
         payment.setStatus(request.getStatus());
@@ -118,6 +124,7 @@ public class PaymentService {
     }
 
     @Transactional
+    @CacheEvict(value = "payments", allEntries = true)
     public PaymentResponse processPayment(UUID paymentId) {
         log.info("Processing payment {}", paymentId);
 
@@ -133,8 +140,7 @@ public class PaymentService {
             payment.setUpdatedOn(LocalDateTime.now());
             payment = paymentRepository.save(payment);
             log.info("Payment {} processed successfully", paymentId);
-        }
-        else {
+        } else {
             log.warn("Payment {} processed but status is {} (only PENDING gets changed).",
                     paymentId, payment.getStatus());
         }
