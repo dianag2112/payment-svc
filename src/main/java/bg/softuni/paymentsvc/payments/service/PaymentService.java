@@ -8,6 +8,7 @@ import bg.softuni.paymentsvc.payments.model.Payment;
 import bg.softuni.paymentsvc.payments.model.PaymentStatus;
 import bg.softuni.paymentsvc.payments.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -24,6 +26,9 @@ public class PaymentService {
     @Transactional
     public PaymentResponse createPayment(PaymentRequest request) {
         LocalDateTime now = LocalDateTime.now();
+
+        log.info("Creating payment for order {} with amount {} and method {}",
+                request.getOrderId(), request.getAmount(), request.getMethod());
 
         paymentRepository.findByOrderId(request.getOrderId())
                 .ifPresent(existing -> {
@@ -43,15 +48,26 @@ public class PaymentService {
 
         try {
             Payment saved = paymentRepository.save(payment);
+            log.info("Payment {} created successfully for order {}", saved.getId(), saved.getOrderId());
             return toResponse(saved);
         } catch (DataIntegrityViolationException ex) {
+            log.warn("DataIntegrityViolation when creating payment for order {}. " +
+                            "Trying to load existing payment.",
+                    request.getOrderId());
+
             Payment existing = paymentRepository.findByOrderId(request.getOrderId())
                     .orElseThrow(() -> ex);
+
+            log.info("Existing payment {} for order {} returned instead of creating a new one.",
+                    existing.getId(), existing.getOrderId());
+
             return toResponse(existing);
         }
     }
 
     public PaymentResponse getPayment(UUID id) {
+        log.info("Fetching payment {}", id);
+
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
 
@@ -59,21 +75,33 @@ public class PaymentService {
     }
 
     public PaymentResponse getPaymentByOrderId(UUID orderId) {
+        log.info("Fetching payment for order {}", orderId);
+
         Payment payment = paymentRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment for this order not found"));
+                .orElseThrow(() -> {
+                    log.warn("Payment for order {} not found", orderId);
+                   return new IllegalArgumentException("Payment for this order not found");
+                });
 
         return toResponse(payment);
     }
 
     @Transactional
     public PaymentResponse updateStatus(UUID paymentId, PaymentStatusUpdateRequest request) {
+        log.info("Updating payment {} status to {}", paymentId, request.getStatus());
+
         Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+                .orElseThrow(() -> {
+                    log.warn("Payment {} not found for status update", paymentId);
+                   return new IllegalArgumentException("Payment not found");
+                });
 
         payment.setStatus(request.getStatus());
         payment.setUpdatedOn(LocalDateTime.now());
 
         Payment saved = paymentRepository.save(payment);
+
+        log.info("Payment {} status updated to {}", saved.getId(), saved.getStatus());
         return toResponse(saved);
     }
 
@@ -91,15 +119,25 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse processPayment(UUID paymentId) {
+        log.info("Processing payment {}", paymentId);
+
         Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+                .orElseThrow(() -> {
+                    log.warn("Payment {} not found for processing", paymentId);
+                    return new IllegalArgumentException("Payment not found");
+                });
 
         if (payment.getStatus() == PaymentStatus.PENDING) {
+            log.info("Payment {} is PENDING. Marking as SUCCESSFUL.", paymentId);
             payment.setStatus(PaymentStatus.SUCCESSFUL);
             payment.setUpdatedOn(LocalDateTime.now());
             payment = paymentRepository.save(payment);
+            log.info("Payment {} processed successfully", paymentId);
         }
-
+        else {
+            log.warn("Payment {} processed but status is {} (only PENDING gets changed).",
+                    paymentId, payment.getStatus());
+        }
         return toResponse(payment);
     }
 

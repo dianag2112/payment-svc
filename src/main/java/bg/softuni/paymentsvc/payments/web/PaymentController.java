@@ -1,6 +1,5 @@
 package bg.softuni.paymentsvc.payments.web;
 
-import bg.softuni.paymentsvc.payments.model.PaymentStatus;
 import bg.softuni.paymentsvc.payments.web.dto.PaymentRequest;
 import bg.softuni.paymentsvc.payments.web.dto.PaymentResponse;
 import bg.softuni.paymentsvc.payments.web.dto.PaymentStatusUpdateRequest;
