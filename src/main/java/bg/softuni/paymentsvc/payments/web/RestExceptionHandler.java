@@ -27,6 +27,6 @@ public class RestExceptionHandler {
                 "timestamp", LocalDateTime.now().toString(),
                 "error", ex.getMessage()
         );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body); // 409
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 }
