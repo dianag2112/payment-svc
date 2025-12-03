@@ -1,6 +1,7 @@
 package bg.softuni.paymentsvc.payments.service;
 
 import bg.softuni.paymentsvc.payments.exception.PaymentAlreadyExistsException;
+import bg.softuni.paymentsvc.payments.exception.PaymentNotFoundException;
 import bg.softuni.paymentsvc.payments.model.Payment;
 import bg.softuni.paymentsvc.payments.model.PaymentStatus;
 import bg.softuni.paymentsvc.payments.repository.PaymentRepository;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -99,6 +101,43 @@ class PaymentServiceTest {
     }
 
     @Test
+    void createPayment_shouldReturnExisting_whenSaveCausesDataIntegrityViolation() {
+        UUID orderId = UUID.randomUUID();
+
+        PaymentRequest request = PaymentRequest.builder()
+                .orderId(orderId)
+                .amount(new BigDecimal("4.20"))
+                .method("CARD")
+                .build();
+
+        when(paymentRepository.findByOrderId(orderId))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(
+                        Payment.builder()
+                                .id(UUID.randomUUID())
+                                .orderId(orderId)
+                                .amount(request.getAmount())
+                                .method(request.getMethod())
+                                .status(PaymentStatus.PENDING)
+                                .createdOn(LocalDateTime.now())
+                                .updatedOn(LocalDateTime.now())
+                                .build()
+                ));
+
+        when(paymentRepository.save(any(Payment.class)))
+                .thenThrow(new DataIntegrityViolationException("unique constraint"));
+
+        PaymentResponse response = paymentService.createPayment(request);
+
+        assertEquals(orderId, response.getOrderId());
+        assertEquals(new BigDecimal("4.20"), response.getAmount());
+        assertEquals(PaymentStatus.PENDING, response.getStatus());
+
+        verify(paymentRepository, times(2)).findByOrderId(orderId);
+        verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
     void updateStatus_shouldChangeStatus() {
         UUID paymentId = UUID.randomUUID();
 
@@ -127,5 +166,77 @@ class PaymentServiceTest {
         assertEquals(PaymentStatus.SUCCESSFUL, response.getStatus());
         verify(paymentRepository).findById(paymentId);
         verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
+    void getPayment_shouldThrowPaymentNotFound_whenMissing() {
+        UUID id = UUID.randomUUID();
+        when(paymentRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(PaymentNotFoundException.class,
+                () -> paymentService.getPayment(id));
+
+        verify(paymentRepository).findById(id);
+    }
+
+    @Test
+    void getPaymentByOrderId_shouldThrowPaymentNotFound_whenMissing() {
+        UUID orderId = UUID.randomUUID();
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+
+        assertThrows(PaymentNotFoundException.class,
+                () -> paymentService.getPaymentByOrderId(orderId));
+
+        verify(paymentRepository).findByOrderId(orderId);
+    }
+
+    @Test
+    void processPayment_shouldMarkSuccessful_whenPending() {
+        UUID paymentId = UUID.randomUUID();
+
+        Payment payment = Payment.builder()
+                .id(paymentId)
+                .orderId(UUID.randomUUID())
+                .amount(new BigDecimal("10.00"))
+                .method("CARD")
+                .status(PaymentStatus.PENDING)
+                .createdOn(LocalDateTime.now())
+                .updatedOn(LocalDateTime.now())
+                .build();
+
+        when(paymentRepository.findById(paymentId))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PaymentResponse response = paymentService.processPayment(paymentId);
+
+        assertEquals(PaymentStatus.SUCCESSFUL, response.getStatus());
+        verify(paymentRepository).findById(paymentId);
+        verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
+    void processPayment_shouldNotChangeStatus_whenNotPending() {
+        UUID paymentId = UUID.randomUUID();
+
+        Payment payment = Payment.builder()
+                .id(paymentId)
+                .orderId(UUID.randomUUID())
+                .amount(new BigDecimal("10.00"))
+                .method("CARD")
+                .status(PaymentStatus.SUCCESSFUL)
+                .createdOn(LocalDateTime.now())
+                .updatedOn(LocalDateTime.now())
+                .build();
+
+        when(paymentRepository.findById(paymentId))
+                .thenReturn(Optional.of(payment));
+
+        PaymentResponse response = paymentService.processPayment(paymentId);
+
+        assertEquals(PaymentStatus.SUCCESSFUL, response.getStatus());
+        verify(paymentRepository).findById(paymentId);
+        verify(paymentRepository, never()).save(any(Payment.class));
     }
 }
