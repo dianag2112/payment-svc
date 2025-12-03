@@ -5,6 +5,7 @@ import bg.softuni.paymentsvc.payments.model.PaymentStatus;
 import bg.softuni.paymentsvc.payments.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ public class PaymentCleanupScheduler {
 
     private final PaymentRepository paymentRepository;
 
+    @CacheEvict(value = "payments", allEntries = true)
     @Scheduled(cron = "0 0 * * * *")
     public void failOldPendingPayments() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(2);

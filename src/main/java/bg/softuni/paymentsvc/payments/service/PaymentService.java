@@ -1,6 +1,7 @@
 package bg.softuni.paymentsvc.payments.service;
 
 import bg.softuni.paymentsvc.payments.exception.PaymentAlreadyExistsException;
+import bg.softuni.paymentsvc.payments.exception.PaymentNotFoundException;
 import bg.softuni.paymentsvc.payments.web.dto.PaymentRequest;
 import bg.softuni.paymentsvc.payments.web.dto.PaymentResponse;
 import bg.softuni.paymentsvc.payments.web.dto.PaymentStatusUpdateRequest;
@@ -73,7 +74,10 @@ public class PaymentService {
         log.info("Fetching payment {}", id);
 
         Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+                .orElseThrow(() -> {
+                log.warn("Payment {} not found", id);
+                return new PaymentNotFoundException("Payment with id [%s] not found.".formatted(id));
+                });
 
         return toResponse(payment);
     }
@@ -85,7 +89,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> {
                     log.warn("Payment for order {} not found", orderId);
-                    return new IllegalArgumentException("Payment for this order not found");
+                    return new PaymentNotFoundException("Payment for order [%s] not found.".formatted(orderId));
                 });
 
         return toResponse(payment);
@@ -99,7 +103,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> {
                     log.warn("Payment {} not found for status update", paymentId);
-                    return new IllegalArgumentException("Payment not found");
+                    return new PaymentNotFoundException("Payment with id [%s] not found.".formatted(paymentId));
                 });
 
         payment.setStatus(request.getStatus());
@@ -131,7 +135,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> {
                     log.warn("Payment {} not found for processing", paymentId);
-                    return new IllegalArgumentException("Payment not found");
+                    return new PaymentNotFoundException("Payment with id [%s] not found.".formatted(paymentId));
                 });
 
         if (payment.getStatus() == PaymentStatus.PENDING) {
