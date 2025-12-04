@@ -48,9 +48,9 @@ It exposes a simple REST API that simulates a payment provider.
 
 ### 🧪 Testing
 
-Unit tests for services
-API tests using MockMvc
-In-memory H2 database for integration tests
+- Unit tests for services  
+- API tests using MockMvc  
+- In-memory H2 database for integration tests  
 
 Part of the Magelan application ecosystem.
 
