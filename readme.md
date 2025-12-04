@@ -46,7 +46,7 @@ It exposes a simple REST API that simulates a payment provider.
   "amount": 42.50
 }
 
-🧪 Testing
+### 🧪 Testing
 
 Unit tests for services
 API tests using MockMvc
