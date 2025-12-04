@@ -1,9 +1,3 @@
-
----
-
-# 🎉 **PAYMENT MICROSERVICE — `payment-svc/README.md`**
-
-```markdown
 # 💳 Payment Service — Microservice for Magelan
 
 This microservice handles all payment-related operations for the **Magelan restaurant application**.  
@@ -13,10 +7,10 @@ It exposes a simple REST API that simulates a payment provider.
 
 ## 🚀 Features
 
-- Create a new payment  
-- Process (approve/deny) a payment  
-- Retrieve payment details  
-- Store payment statuses  
+- Create a new payment
+- Process (approve/deny) a payment
+- Retrieve payment details
+- Store payment statuses
 - Communicate with Magelan via **OpenFeign**
 
 ---
@@ -28,7 +22,7 @@ It exposes a simple REST API that simulates a payment provider.
 - **Spring Web**
 - **Spring Data JPA**
 - **MySQL**
-- **OpenFeign** (used by Magelan to call this service)
+- **OpenFeign**
 - **Lombok**
 
 ---
@@ -36,7 +30,6 @@ It exposes a simple REST API that simulates a payment provider.
 ## 🔌 REST API Endpoints
 
 ### **1️⃣ Create Payment**
-
 
 ### Example Response:
 ```json
@@ -46,11 +39,12 @@ It exposes a simple REST API that simulates a payment provider.
   "amount": 42.50
 }
 
-### 🧪 Testing
+🧪 Testing
 
-- Unit tests for services  
-- API tests using MockMvc  
-- In-memory H2 database for integration tests  
+Unit tests for services
+
+API tests using MockMvc
+
+In-memory H2 database for integration tests
 
 Part of the Magelan application ecosystem.
-
