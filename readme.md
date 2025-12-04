@@ -52,8 +52,5 @@ Unit tests for services
 API tests using MockMvc
 In-memory H2 database for integration tests
 
-cd payment-svc
-mvn spring-boot:run
-
 Part of the Magelan application ecosystem.
 
